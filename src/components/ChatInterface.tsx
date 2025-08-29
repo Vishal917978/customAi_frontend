@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Loader2 } from "lucide-react";
 import { AIResultCard } from "./AIResultCard";
+import { useNavigate } from "react-router-dom";
 
 export interface AIResponse {
   provider: "gpt" | "gemini" | "perplexity";
@@ -22,21 +23,20 @@ export const ChatInterface = () => {
     { provider: "perplexity", response: "", loading: false },
   ]);
 
-  // ✅ Global chat count (all bots combined)
   const [chatCount, setChatCount] = useState(0);
   const FREE_LIMIT = 3;
+
+  const navigate = useNavigate(); // ✅ React Router navigate
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
 
-    // ✅ Block if user already used free limit
     if (chatCount >= FREE_LIMIT) {
-      alert("❌ Free chat limit reached! Please subscribe to continue.");
+      alert("❌ Free chat limit reached! Please upgrade to continue.");
       return;
     }
 
-    // ✅ Set all loading
     setResponses((prev) =>
       prev.map((r) => ({ ...r, loading: true, response: "", error: undefined }))
     );
@@ -68,8 +68,11 @@ export const ChatInterface = () => {
 
     await Promise.allSettled(apiCalls);
 
-    // ✅ Increase global count only once per message
     setChatCount((prev) => prev + 1);
+  };
+
+  const handleUpgradeClick = () => {
+    navigate("/subscription"); // ✅ Navigate to Subscription page
   };
 
   return (
@@ -92,14 +95,16 @@ export const ChatInterface = () => {
         </Button>
       </form>
 
-      {/* After limit reached, show subscription card instead of results */}
+      {/* Free limit reached card */}
       {chatCount >= FREE_LIMIT ? (
         <div className="p-6 bg-yellow-100 border border-yellow-300 rounded-lg text-center">
           <h3 className="font-bold text-lg mb-2">Free Limit Reached</h3>
           <p className="text-sm mb-4">
-            You have used your 3 free chats. Please subscribe to continue chatting.
+            You have used your {FREE_LIMIT} free chats. Please upgrade to continue chatting.
           </p>
-          <Button className="w-full">Subscribe Now</Button>
+          <Button className="w-full" onClick={handleUpgradeClick}>
+            Upgrade Now
+          </Button>
         </div>
       ) : (
         <div className="grid md:grid-cols-3 gap-6">
