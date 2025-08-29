@@ -34,8 +34,8 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
   const config = providerConfig[provider];
   const Icon = config.icon;
 
-  // 📌 Handle Copy
-  const handleCopy = async () => {
+  // 📌 Handle full-response copy
+  const handleCopyResponse = async () => {
     if (!response) return;
     try {
       await navigator.clipboard.writeText(response);
@@ -49,7 +49,7 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
 
   // 📌 Card JSX
   const CardUI = (
-    <Card className={`${isFullscreen ? "max-h-screen w-full md:w-[90%]" : "h-[400px]"} bg-card/50 backdrop-blur-sm border-border/50 hover:border-border transition-all duration-300 flex flex-col overflow-hidden`}>
+    <Card className={`${isFullscreen ? "max-h-screen w-full md:w-[90%]" : "min-h-[300px] h-auto"} bg-card/50 backdrop-blur-sm border-border/50 hover:border-border transition-all duration-300 flex flex-col`}>
       {/* Header */}
       <CardHeader className="pb-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
@@ -70,8 +70,8 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
       </CardHeader>
 
       {/* Content */}
-      <CardContent className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 relative">
+      <CardContent className="flex-1 flex flex-col overflow-auto">
+        <div className="flex-1">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-3">
@@ -84,42 +84,81 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
               <p className="text-sm text-destructive text-center">{error}</p>
             </div>
           ) : response ? (
-            <div className="h-full overflow-auto">
-              <div className="space-y-3 text-sm leading-relaxed text-foreground/90">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    code({ inline, className, children, ...props }) {
-                      const match = /language-(\w+)/.exec(className || "");
-                      return !inline && match ? (
-                        <div className="overflow-x-auto">
-                          <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" className="rounded-lg" {...props}>
-                            {String(children).replace(/\n$/, "")}
+            <div className="overflow-auto max-h-[70vh] space-y-3 text-sm leading-relaxed text-foreground/90">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code({ inline, className = "", children, ...props }) {
+                    const match = /language-(\w+)/.exec(className || "");
+                    const codeContent = String(children).replace(/\n$/, "");
+
+                    if (!inline && match) {
+                      return (
+                        <div className="relative my-2 overflow-x-auto rounded-lg border border-border/50">
+                          {/* Copy Button for this code block */}
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="absolute top-2 right-2 z-10"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(codeContent);
+                                toast({
+                                  title: "Copied!",
+                                  description: `Code block copied from ${config.name}`,
+                                });
+                              } catch {
+                                toast({
+                                  title: "Failed",
+                                  description: "Could not copy code",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+
+                          <SyntaxHighlighter
+                            style={oneDark}
+                            language={match[1]}
+                            PreTag="div"
+                            className="rounded-lg p-3"
+                            {...props}
+                          >
+                            {codeContent}
                           </SyntaxHighlighter>
                         </div>
-                      ) : (
-                        <code className="px-1 py-0.5 rounded text-xs" {...props}>{children}</code>
                       );
                     }
-                  }}
-                >
-                  {response}
-                </ReactMarkdown>
-              </div>
+
+                    // Inline code
+                    return (
+                      <code className="px-1 py-0.5 rounded text-xs" {...props}>
+                        {children}
+                      </code>
+                    );
+                  },
+                }}
+              >
+                {response}
+              </ReactMarkdown>
             </div>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-muted-foreground text-center">Ready to generate response</p>
+              <p className="text-sm text-muted-foreground text-center">
+                Ready to generate response
+              </p>
             </div>
           )}
         </div>
 
-        {/* Copy Button */}
+        {/* Full-response Copy Button */}
         {response && !loading && (
           <div className="pt-4 border-t border-border/50 mt-4">
-            <Button variant="ghost" size="sm" onClick={handleCopy} className="w-full h-8 text-xs">
+            <Button variant="ghost" size="sm" onClick={handleCopyResponse} className="w-full h-8 text-xs">
               <Copy className="h-3 w-3 mr-2" />
-              {copied ? "Copied!" : "Copy Response"}
+              {copied ? "Copied!" : "Copy Full Response"}
             </Button>
           </div>
         )}

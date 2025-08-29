@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Loader2 } from "lucide-react";
 import { AIResultCard } from "./AIResultCard";
+import { SubscriptionPage } from "./SubscriptionPage";
 
 export interface AIResponse {
   provider: "gpt" | "gemini" | "perplexity";
@@ -22,21 +23,14 @@ export const ChatInterface = () => {
     { provider: "perplexity", response: "", loading: false },
   ]);
 
-  // ✅ Global chat count (all bots combined)
   const [chatCount, setChatCount] = useState(0);
+  const [showSubscription, setShowSubscription] = useState(false);
   const FREE_LIMIT = 3;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || chatCount >= FREE_LIMIT) return;
 
-    // ✅ Block if user already used free limit
-    if (chatCount >= FREE_LIMIT) {
-      alert("❌ Free chat limit reached! Please subscribe to continue.");
-      return;
-    }
-
-    // ✅ Set all loading
     setResponses((prev) =>
       prev.map((r) => ({ ...r, loading: true, response: "", error: undefined }))
     );
@@ -50,9 +44,7 @@ export const ChatInterface = () => {
 
         setResponses((prev) =>
           prev.map((r) =>
-            r.provider === provider
-              ? { ...r, loading: false, response: resText }
-              : r
+            r.provider === provider ? { ...r, loading: false, response: resText } : r
           )
         );
       } catch (err: any) {
@@ -67,52 +59,60 @@ export const ChatInterface = () => {
     });
 
     await Promise.allSettled(apiCalls);
-
-    // ✅ Increase global count only once per message
     setChatCount((prev) => prev + 1);
+    setMessage("");
   };
 
-  return (
-    <div className="w-full max-w-6xl mx-auto px-4">
-      {/* Input box + Search button */}
-      <form onSubmit={handleSubmit} className="flex gap-3 max-w-2xl mx-auto mb-8">
-        <Input
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Ask anything..."
-          className="flex-1 h-12"
-          disabled={chatCount >= FREE_LIMIT}
-        />
-        <Button type="submit" disabled={!message.trim() || chatCount >= FREE_LIMIT}>
-          {responses.some((r) => r.loading) ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </Button>
-      </form>
+  // Show subscription automatically after free limit
+  useEffect(() => {
+    if (chatCount >= FREE_LIMIT) {
+      setShowSubscription(true);
+    }
+  }, [chatCount]);
 
-      {/* After limit reached, show subscription card instead of results */}
-      {chatCount >= FREE_LIMIT ? (
-        <div className="p-6 bg-yellow-100 border border-yellow-300 rounded-lg text-center">
-          <h3 className="font-bold text-lg mb-2">Free Limit Reached</h3>
-          <p className="text-sm mb-4">
-            You have used your 3 free chats. Please subscribe to continue chatting.
-          </p>
-          <Button className="w-full">Subscribe Now</Button>
-        </div>
+  return (
+    <div className="relative w-full max-w-6xl mx-auto px-4">
+      {/* Fixed top-right subscription button */}
+      <div className="fixed top-4 right-4 z-50">
+        <Button onClick={() => setShowSubscription(true)}>Subscribe</Button>
+      </div>
+
+      {/* Show subscription page or chat interface */}
+      {showSubscription ? (
+        <SubscriptionPage onClose={() => setShowSubscription(false)} />
       ) : (
-        <div className="grid md:grid-cols-3 gap-6">
-          {responses.map((r) => (
-            <AIResultCard
-              key={r.provider}
-              provider={r.provider}
-              response={r.response}
-              loading={r.loading}
-              error={r.error}
+        <>
+          {/* Input + Send button */}
+          <form onSubmit={handleSubmit} className="flex gap-3 max-w-2xl mx-auto mb-8">
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Ask anything..."
+              className="flex-1 h-12"
+              disabled={chatCount >= FREE_LIMIT}
             />
-          ))}
-        </div>
+            <Button type="submit" disabled={!message.trim() || chatCount >= FREE_LIMIT}>
+              {responses.some((r) => r.loading) ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </form>
+
+          {/* AI responses */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {responses.map((r) => (
+              <AIResultCard
+                key={r.provider}
+                provider={r.provider}
+                response={r.response}
+                loading={r.loading}
+                error={r.error}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
