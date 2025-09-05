@@ -1,4 +1,3 @@
-// ✅ Imports
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,22 +10,19 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-// ✅ Props Interface
 interface AIResultCardProps {
   provider: "gpt" | "gemini" | "perplexity";
   response: string;
   loading: boolean;
-  error?: string;
+  error?: string | object;
 }
 
-// ✅ Provider Config
 const providerConfig = {
   gpt: { name: "GPT-4", icon: Bot, gradient: "bg-gpt-gradient", badge: "ChatGPT", description: "Advanced reasoning and conversation" },
   gemini: { name: "Gemini Pro", icon: Sparkles, gradient: "bg-gemini-gradient", badge: "Google AI", description: "Multimodal AI with deep understanding" },
   perplexity: { name: "Perplexity", icon: Search, gradient: "bg-perplexity-gradient", badge: "Real-time", description: "Search-powered AI with live data" },
 };
 
-// ✅ Component
 export const AIResultCard = ({ provider, response, loading, error }: AIResultCardProps) => {
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -34,23 +30,20 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
   const config = providerConfig[provider];
   const Icon = config.icon;
 
-  // 📌 Handle full-response copy
   const handleCopyResponse = async () => {
     if (!response) return;
     try {
       await navigator.clipboard.writeText(response);
       setCopied(true);
-      toast({ title: "Copied to clipboard", description: `${config.name} response copied successfully` });
+      toast({ title: "Copied", description: `${config.name} response copied successfully` });
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast({ title: "Failed to copy", description: "Could not copy response to clipboard", variant: "destructive" });
+      toast({ title: "Failed", description: "Could not copy response", variant: "destructive" });
     }
   };
 
-  // 📌 Card JSX
   const CardUI = (
     <Card className={`${isFullscreen ? "max-h-screen w-full md:w-[90%]" : "min-h-[300px] h-auto"} bg-card/50 backdrop-blur-sm border-border/50 hover:border-border transition-all duration-300 flex flex-col`}>
-      {/* Header */}
       <CardHeader className="pb-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg ${config.gradient}`}>
@@ -69,7 +62,6 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
         </div>
       </CardHeader>
 
-      {/* Content */}
       <CardContent className="flex-1 flex flex-col overflow-auto">
         <div className="flex-1">
           {loading ? (
@@ -81,7 +73,7 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
             </div>
           ) : error ? (
             <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-destructive text-center">{error}</p>
+              <p className="text-sm text-destructive text-center">{typeof error === "string" ? error : JSON.stringify(error)}</p>
             </div>
           ) : response ? (
             <div className="overflow-auto max-h-[70vh] space-y-3 text-sm leading-relaxed text-foreground/90">
@@ -95,7 +87,6 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
                     if (!inline && match) {
                       return (
                         <div className="relative my-2 overflow-x-auto rounded-lg border border-border/50">
-                          {/* Copy Button for this code block */}
                           <Button
                             size="icon"
                             variant="ghost"
@@ -103,41 +94,21 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
                             onClick={async () => {
                               try {
                                 await navigator.clipboard.writeText(codeContent);
-                                toast({
-                                  title: "Copied!",
-                                  description: `Code block copied from ${config.name}`,
-                                });
+                                toast({ title: "Copied!", description: `Code block copied from ${config.name}` });
                               } catch {
-                                toast({
-                                  title: "Failed",
-                                  description: "Could not copy code",
-                                  variant: "destructive",
-                                });
+                                toast({ title: "Failed", description: "Could not copy code", variant: "destructive" });
                               }
                             }}
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
-
-                          <SyntaxHighlighter
-                            style={oneDark}
-                            language={match[1]}
-                            PreTag="div"
-                            className="rounded-lg p-3"
-                            {...props}
-                          >
+                          <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" className="rounded-lg p-3" {...props}>
                             {codeContent}
                           </SyntaxHighlighter>
                         </div>
                       );
                     }
-
-                    // Inline code
-                    return (
-                      <code className="px-1 py-0.5 rounded text-xs" {...props}>
-                        {children}
-                      </code>
-                    );
+                    return <code className="px-1 py-0.5 rounded text-xs" {...props}>{children}</code>;
                   },
                 }}
               >
@@ -146,19 +117,15 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
             </div>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-muted-foreground text-center">
-                Ready to generate response
-              </p>
+              <p className="text-sm text-muted-foreground text-center">Ready to generate response</p>
             </div>
           )}
         </div>
 
-        {/* Full-response Copy Button */}
         {response && !loading && (
           <div className="pt-4 border-t border-border/50 mt-4">
             <Button variant="ghost" size="sm" onClick={handleCopyResponse} className="w-full h-8 text-xs">
-              <Copy className="h-3 w-3 mr-2" />
-              {copied ? "Copied!" : "Copy Full Response"}
+              <Copy className="h-3 w-3 mr-2" /> {copied ? "Copied!" : "Copy Full Response"}
             </Button>
           </div>
         )}
@@ -170,7 +137,5 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
     <div className="fixed inset-0 z-50 flex justify-center items-start bg-background p-6 overflow-auto">
       {CardUI}
     </div>
-  ) : (
-    <div>{CardUI}</div>
-  );
+  ) : <div>{CardUI}</div>;
 };

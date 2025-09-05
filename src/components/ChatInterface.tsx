@@ -5,6 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Send, Loader2 } from "lucide-react";
 import { AIResultCard } from "./AIResultCard";
 import { SubscriptionPage } from "./SubscriptionPage";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 export interface AIResponse {
   provider: "gpt" | "gemini" | "perplexity";
@@ -15,7 +22,17 @@ export interface AIResponse {
 
 const API_BASE_URL = "http://localhost:5000";
 
-export const ChatInterface = () => {
+interface ChatInterfaceProps {
+  attemptsUsed: number;
+  freeLimit: number;
+  onAttemptUsed: () => void; // <-- call this once per submit
+}
+
+export const ChatInterface = ({
+  attemptsUsed,
+  freeLimit,
+  onAttemptUsed,
+}: ChatInterfaceProps) => {
   const [message, setMessage] = useState("");
   const [responses, setResponses] = useState<AIResponse[]>([
     { provider: "gpt", response: "", loading: false },
@@ -23,14 +40,24 @@ export const ChatInterface = () => {
     { provider: "perplexity", response: "", loading: false },
   ]);
 
-  const [chatCount, setChatCount] = useState(0);
   const [showSubscription, setShowSubscription] = useState(false);
-  const FREE_LIMIT = 3;
+
+  const email = localStorage.getItem("userEmail") || "User";
+  const avatarLetter = email.charAt(0).toUpperCase();
+
+  useEffect(() => {
+    setShowSubscription(attemptsUsed >= freeLimit);
+  }, [attemptsUsed, freeLimit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || chatCount >= FREE_LIMIT) return;
+    if (!message.trim()) return;
+    if (attemptsUsed >= freeLimit) {
+      setShowSubscription(true);
+      return;
+    }
 
+    // mark loading
     setResponses((prev) =>
       prev.map((r) => ({ ...r, loading: true, response: "", error: undefined }))
     );
@@ -39,19 +66,30 @@ export const ChatInterface = () => {
 
     const apiCalls = providers.map(async (provider) => {
       try {
-        const response = await axios.post(`${API_BASE_URL}/api/${provider}`, { message });
-        const resText = response.data.reply || "No response";
+        const response = await axios.post(`${API_BASE_URL}/api/${provider}`, {
+          message,
+        });
+        const resText = response.data?.reply ?? "No response";
 
         setResponses((prev) =>
           prev.map((r) =>
-            r.provider === provider ? { ...r, loading: false, response: resText } : r
+            r.provider === provider
+              ? { ...r, loading: false, response: resText }
+              : r
           )
         );
       } catch (err: any) {
         setResponses((prev) =>
           prev.map((r) =>
             r.provider === provider
-              ? { ...r, loading: false, error: err.response?.data?.error || err.message }
+              ? {
+                  ...r,
+                  loading: false,
+                  error:
+                    err?.response?.data?.error ||
+                    err?.message ||
+                    "Request failed",
+                }
               : r
           )
         );
@@ -59,22 +97,39 @@ export const ChatInterface = () => {
     });
 
     await Promise.allSettled(apiCalls);
-    setChatCount((prev) => prev + 1);
+
+    onAttemptUsed();
     setMessage("");
   };
 
-  // Show subscription automatically after free limit
-  useEffect(() => {
-    if (chatCount >= FREE_LIMIT) {
-      setShowSubscription(true);
-    }
-  }, [chatCount]);
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userEmail");
+    window.location.reload();
+  };
 
   return (
     <div className="relative w-full max-w-6xl mx-auto px-4">
-      {/* Fixed top-right subscription button */}
-      <div className="fixed top-4 right-4 z-50">
+      {/* Fixed top-right controls (Subscribe + Profile) */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
         <Button onClick={() => setShowSubscription(true)}>Subscribe</Button>
+
+        {/* Profile dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Avatar className="cursor-pointer">
+              <AvatarFallback>{avatarLetter}</AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem>
+              Searches used: {attemptsUsed}/{freeLimit}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Show subscription page or chat interface */}
@@ -83,15 +138,22 @@ export const ChatInterface = () => {
       ) : (
         <>
           {/* Input + Send button */}
-          <form onSubmit={handleSubmit} className="flex gap-3 max-w-2xl mx-auto mb-8">
+          <form
+            onSubmit={handleSubmit}
+            className="flex gap-3 max-w-2xl mx-auto mb-8"
+          >
             <Input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Ask anything..."
+              placeholder={`Ask anything... (${freeLimit - attemptsUsed} free left)`}
               className="flex-1 h-12"
-              disabled={chatCount >= FREE_LIMIT}
+              disabled={attemptsUsed >= freeLimit}
             />
-            <Button type="submit" disabled={!message.trim() || chatCount >= FREE_LIMIT}>
+            <Button
+              type="submit"
+              disabled={!message.trim() || attemptsUsed >= freeLimit}
+              title={attemptsUsed >= freeLimit ? "Free limit reached" : "Send"}
+            >
               {responses.some((r) => r.loading) ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
