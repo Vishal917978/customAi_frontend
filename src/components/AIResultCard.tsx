@@ -76,7 +76,7 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
               <p className="text-sm text-destructive text-center">{typeof error === "string" ? error : JSON.stringify(error)}</p>
             </div>
           ) : response ? (
-            <div className="overflow-auto max-h-[70vh] space-y-3 text-sm leading-relaxed text-foreground/90">
+            <div className="overflow-auto max-h-[70vh] space-y-3 text-sm leading-relaxed text-foreground/90 text-justify">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -102,7 +102,7 @@ export const AIResultCard = ({ provider, response, loading, error }: AIResultCar
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
-                          <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" className="rounded-lg p-3" {...props}>
+                          <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" className="rounded-lg p-3 text-left" {...props}>
                             {codeContent}
                           </SyntaxHighlighter>
                         </div>

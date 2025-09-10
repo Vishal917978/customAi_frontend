@@ -8,6 +8,7 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import { ChatInterface } from "./components/ChatInterface";
 import { HeroSection } from "./components/HeroSection";
+import LandingPage from "./pages/landingpage"
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+           <Route path="/" element={<LandingPage/>} />
           {/* Default: open signup first */}
           <Route path="/" element={<Navigate to="/signup" replace />} />
 
